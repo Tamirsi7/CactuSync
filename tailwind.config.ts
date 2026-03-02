@@ -12,8 +12,21 @@ export default {
         "2xl": "1400px",
       },
     },
+    fontFamily: {
+      sans: ['DM Sans', 'Inter', 'sans-serif'],
+    },
     extend: {
       colors: {
+        heat: {
+          0: "hsl(var(--heat-0))",
+          1: "hsl(var(--heat-1))",
+          2: "hsl(var(--heat-2))",
+          3: "hsl(var(--heat-3))",
+          4: "hsl(var(--heat-4))",
+        },
+        lavender: "hsl(var(--lavender))",
+        "mint-light": "hsl(var(--mint-light))",
+        "blue-light": "hsl(var(--blue-light))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
