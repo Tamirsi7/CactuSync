@@ -27,6 +27,10 @@ export default {
         lavender: "hsl(var(--lavender))",
         "mint-light": "hsl(var(--mint-light))",
         "blue-light": "hsl(var(--blue-light))",
+        booked: {
+          DEFAULT: "hsl(var(--booked))",
+          foreground: "hsl(var(--booked-foreground))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
