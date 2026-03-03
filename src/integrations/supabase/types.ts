@@ -41,6 +41,47 @@ export type Database = {
         }
         Relationships: []
       }
+      bookings: {
+        Row: {
+          created_at: string
+          created_by: string
+          date: string
+          end_time: string
+          id: string
+          participant_names: string[]
+          start_time: string
+          team_uuid: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date: string
+          end_time: string
+          id?: string
+          participant_names?: string[]
+          start_time: string
+          team_uuid: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date?: string
+          end_time?: string
+          id?: string
+          participant_names?: string[]
+          start_time?: string
+          team_uuid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_team_uuid_fkey"
+            columns: ["team_uuid"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

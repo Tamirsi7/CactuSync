@@ -45,7 +45,7 @@ const Dashboard = () => {
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <CalendarClock className="w-4 h-4 text-primary" />
             </div>
-            <span className="font-semibold text-foreground">CactuSync</span>
+            <span className="font-semibold text-foreground">🌵 CactuSync</span>
             {profile && (
               <div className="flex items-center gap-1">
                 {editingTeamName ? (
@@ -81,22 +81,22 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid lg:grid-cols-[280px_1fr_280px] gap-6">
-          <aside className="space-y-6">
-            <div className="glass-card rounded-xl p-5 space-y-6">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid lg:grid-cols-[240px_1fr_260px] gap-4">
+          <aside className="space-y-4">
+            <div className="glass-card rounded-xl p-4 space-y-4">
               <AddAvailabilityForm />
               <div className="border-t border-border/50" />
               <MySlotsList />
             </div>
           </aside>
 
-          <section className="glass-card rounded-xl p-5 min-w-0">
+          <section className="glass-card rounded-xl p-4 min-w-0">
             <HeatmapCalendar bookingsState={bookingsState} />
           </section>
 
           <aside>
-            <div className="glass-card rounded-xl p-5">
+            <div className="glass-card rounded-xl p-4">
               <SuggestedMeetings bookingsState={bookingsState} />
             </div>
           </aside>

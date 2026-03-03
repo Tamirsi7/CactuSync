@@ -8,13 +8,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// 30-minute slots from 7:00 to 23:00
+// 30-minute slots from 8:00 to 20:00 (compact view)
 const SLOTS: string[] = [];
-for (let h = 7; h <= 22; h++) {
+for (let h = 8; h <= 19; h++) {
   SLOTS.push(`${String(h).padStart(2, "0")}:00`);
   SLOTS.push(`${String(h).padStart(2, "0")}:30`);
 }
-SLOTS.push("23:00");
+SLOTS.push("20:00");
 
 function nextSlot(slot: string): string {
   const h = parseInt(slot.split(":")[0]);
