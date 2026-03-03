@@ -17,9 +17,9 @@ interface Suggestion {
 }
 
 interface BookingsState {
-  bookings: { date: string; startSlot: string; endSlot: string; names: string[] }[];
+  bookings: { id: string; date: string; start_time: string; end_time: string; participant_names: string[] }[];
   addBooking: (b: { date: string; startSlot: string; endSlot: string; names: string[] }) => void;
-  removeBooking: (index: number) => void;
+  removeBooking: (id: string) => void;
   isSlotBooked: (date: string, slot: string) => boolean;
 }
 
@@ -163,13 +163,13 @@ export function SuggestedMeetings({ bookingsState }: Props) {
       {bookingsState.bookings.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-booked">Booked</p>
-          {bookingsState.bookings.map((b, i) => (
-            <div key={i} className="p-2 rounded-lg bg-booked/10 border border-booked/30 flex items-center justify-between">
+          {bookingsState.bookings.map((b) => (
+            <div key={b.id} className="p-2 rounded-lg bg-booked/10 border border-booked/30 flex items-center justify-between">
               <div className="text-xs">
-                <span className="font-medium">{format(parseISO(b.date), "MMM d")}</span> {b.startSlot}–{b.endSlot}
-                <div className="text-muted-foreground">{b.names.join(", ")}</div>
+                <span className="font-medium">{format(parseISO(b.date), "MMM d")}</span> {b.start_time}–{b.end_time}
+                <div className="text-muted-foreground">{b.participant_names.join(", ")}</div>
               </div>
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => bookingsState.removeBooking(i)}>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => bookingsState.removeBooking(b.id)}>
                 ×
               </Button>
             </div>

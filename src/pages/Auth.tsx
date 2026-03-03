@@ -91,7 +91,7 @@ const Auth = () => {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-4">
             <CalendarClock className="w-7 h-7 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">CactuSync</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">🌵 CactuSync</h1>
           <p className="text-muted-foreground">Find the perfect meeting time for your team</p>
         </div>
 
