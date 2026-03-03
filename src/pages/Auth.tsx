@@ -6,34 +6,74 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarClock, Users } from "lucide-react";
+import { useTeams, useCreateTeam } from "@/hooks/useTeams";
+import { CalendarClock, Users, Plus } from "lucide-react";
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [teamId, setTeamId] = useState("1");
+  const [teamUuid, setTeamUuid] = useState("");
+  const [newTeamName, setNewTeamName] = useState("");
+  const [creatingTeam, setCreatingTeam] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { data: teams } = useTeams();
+  const createTeam = useCreateTeam();
+
+  const handleCreateTeam = async () => {
+    if (!newTeamName.trim()) return;
+    try {
+      // We need to be authenticated to create a team, so we'll handle this differently
+      // For signup, we'll create the team inline
+      setCreatingTeam(false);
+    } catch {}
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
+      let finalTeamUuid = teamUuid;
+
+      // If creating a new team, we need to create it after signup
+      if (creatingTeam && newTeamName.trim()) {
+        // Sign up first, then we'll create the team via trigger
+        // We'll store team name in metadata and handle via a different approach
+        // For now, create team with service role not possible from client
+        // Instead: sign up without team, then create team and update profile
+      }
+
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: window.location.origin,
-          data: { full_name: fullName, team_id: parseInt(teamId) },
+          data: { full_name: fullName, team_uuid: creatingTeam ? null : finalTeamUuid || null },
         },
       });
+
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
+      } else if (signUpData.user && creatingTeam && newTeamName.trim()) {
+        // Create team and update profile
+        const { data: team, error: teamErr } = await supabase
+          .from("teams")
+          .insert({ name: newTeamName.trim(), created_by: signUpData.user.id })
+          .select()
+          .single();
+
+        if (!teamErr && team) {
+          await supabase
+            .from("profiles")
+            .update({ team_uuid: team.id })
+            .eq("user_id", signUpData.user.id);
+        }
+        toast({ title: "Account created!", description: "Welcome to CactuSync." });
       } else {
-        toast({ title: "Check your email", description: "We've sent a confirmation link." });
+        toast({ title: "Account created!", description: "Welcome to CactuSync." });
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -51,7 +91,7 @@ const Auth = () => {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-4">
             <CalendarClock className="w-7 h-7 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">TeamSync</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">CactuSync</h1>
           <p className="text-muted-foreground">Find the perfect meeting time for your team</p>
         </div>
 
@@ -71,21 +111,40 @@ const Auth = () => {
                     <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Alex Johnson" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="team">Team</Label>
-                    <Select value={teamId} onValueChange={setTeamId}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[1, 2, 3, 4, 5].map((t) => (
-                          <SelectItem key={t} value={String(t)}>
-                            <span className="flex items-center gap-2">
-                              <Users className="w-3.5 h-3.5" /> Team {t}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Team</Label>
+                    {!creatingTeam ? (
+                      <div className="space-y-2">
+                        <Select value={teamUuid} onValueChange={setTeamUuid}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a team" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {teams?.map((t) => (
+                              <SelectItem key={t.id} value={t.id}>
+                                <span className="flex items-center gap-2">
+                                  <Users className="w-3.5 h-3.5" /> {t.name}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => setCreatingTeam(true)}>
+                          <Plus className="w-3.5 h-3.5 mr-1" /> Create new team
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Input
+                          value={newTeamName}
+                          onChange={(e) => setNewTeamName(e.target.value)}
+                          placeholder="Enter team name"
+                          required
+                        />
+                        <Button type="button" variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => { setCreatingTeam(false); setNewTeamName(""); }}>
+                          Choose existing team instead
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

@@ -1,30 +1,75 @@
 import { useAuth } from "@/lib/auth-context";
 import { useProfile } from "@/hooks/useAvailabilities";
+import { useTeams, useUpdateTeamName } from "@/hooks/useTeams";
+import { useBookings } from "@/hooks/useBookings";
 import { AddAvailabilityForm } from "@/components/AddAvailabilityForm";
 import { MySlotsList } from "@/components/MySlotsList";
 import { HeatmapCalendar } from "@/components/HeatmapCalendar";
 import { SuggestedMeetings } from "@/components/SuggestedMeetings";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, LogOut } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CalendarClock, LogOut, Pencil, Check, X } from "lucide-react";
+import { useState } from "react";
+import { Navigate } from "react-router-dom";
 
 const Dashboard = () => {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
+  const updateTeamName = useUpdateTeamName();
+  const [editingTeamName, setEditingTeamName] = useState(false);
+  const [teamNameInput, setTeamNameInput] = useState("");
+  const bookingsState = useBookings();
+
+  if (!user) return <Navigate to="/" replace />;
+
+  const teamName = (profile as any)?.teams?.name || "No team";
+  const teamUuid = profile?.team_uuid;
+
+  const handleEditTeamName = () => {
+    setTeamNameInput(teamName);
+    setEditingTeamName(true);
+  };
+
+  const handleSaveTeamName = () => {
+    if (teamUuid && teamNameInput.trim()) {
+      updateTeamName.mutate({ id: teamUuid, name: teamNameInput.trim() });
+    }
+    setEditingTeamName(false);
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <CalendarClock className="w-4 h-4 text-primary" />
             </div>
-            <span className="font-semibold text-foreground">TeamSync</span>
+            <span className="font-semibold text-foreground">CactuSync</span>
             {profile && (
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                Team {profile.team_id}
-              </span>
+              <div className="flex items-center gap-1">
+                {editingTeamName ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      value={teamNameInput}
+                      onChange={(e) => setTeamNameInput(e.target.value)}
+                      className="h-6 text-xs w-32"
+                      onKeyDown={(e) => e.key === "Enter" && handleSaveTeamName()}
+                    />
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleSaveTeamName}>
+                      <Check className="w-3 h-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingTeamName(false)}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full flex items-center gap-1 cursor-pointer hover:bg-muted/80" onClick={handleEditTeamName}>
+                    {teamName}
+                    <Pencil className="w-2.5 h-2.5" />
+                  </span>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -36,10 +81,8 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid lg:grid-cols-[280px_1fr_280px] gap-6">
-          {/* Left sidebar: Input + My Slots */}
           <aside className="space-y-6">
             <div className="glass-card rounded-xl p-5 space-y-6">
               <AddAvailabilityForm />
@@ -48,15 +91,13 @@ const Dashboard = () => {
             </div>
           </aside>
 
-          {/* Center: Heatmap */}
           <section className="glass-card rounded-xl p-5 min-w-0">
-            <HeatmapCalendar />
+            <HeatmapCalendar bookingsState={bookingsState} />
           </section>
 
-          {/* Right sidebar: Suggestions */}
           <aside>
             <div className="glass-card rounded-xl p-5">
-              <SuggestedMeetings />
+              <SuggestedMeetings bookingsState={bookingsState} />
             </div>
           </aside>
         </div>

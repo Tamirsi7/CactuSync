@@ -13,7 +13,7 @@ export interface Availability {
 }
 
 export interface AvailabilityWithProfile extends Availability {
-  profiles?: { full_name: string; team_id: number } | null;
+  profiles?: { full_name: string; team_uuid: string } | null;
 }
 
 export function useMyAvailabilities() {
@@ -34,16 +34,15 @@ export function useMyAvailabilities() {
   });
 }
 
-export function useTeamAvailabilities(teamId?: number) {
+export function useTeamAvailabilities(teamUuid?: string) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["team-availabilities", teamId],
+    queryKey: ["team-availabilities", teamUuid],
     queryFn: async () => {
-      // Get team members
       const { data: members, error: mErr } = await supabase
         .from("profiles")
-        .select("user_id, full_name, team_id")
-        .eq("team_id", teamId!);
+        .select("user_id, full_name, team_uuid")
+        .eq("team_uuid", teamUuid!);
       if (mErr) throw mErr;
 
       const userIds = members.map((m) => m.user_id);
@@ -59,7 +58,7 @@ export function useTeamAvailabilities(teamId?: number) {
 
       return { availabilities: avails as Availability[], members };
     },
-    enabled: !!user && !!teamId,
+    enabled: !!user && !!teamUuid,
   });
 }
 
@@ -113,7 +112,7 @@ export function useProfile() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("*, teams:team_uuid(id, name)")
         .eq("user_id", user!.id)
         .single();
       if (error) throw error;
