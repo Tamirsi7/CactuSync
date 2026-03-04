@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useTeams, useCreateTeam } from "@/hooks/useTeams";
 import { CalendarClock, Users, Plus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -19,61 +19,60 @@ const Auth = () => {
   const [creatingTeam, setCreatingTeam] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { data: teams } = useTeams();
-  const createTeam = useCreateTeam();
 
-  const handleCreateTeam = async () => {
-    if (!newTeamName.trim()) return;
-    try {
-      // We need to be authenticated to create a team, so we'll handle this differently
-      // For signup, we'll create the team inline
-      setCreatingTeam(false);
-    } catch {}
-  };
+  // Fetch teams without requiring auth (public SELECT policy)
+  const { data: teams } = useQuery({
+    queryKey: ["public-teams"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("teams").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     if (isSignUp) {
-      let finalTeamUuid = teamUuid;
-
-      // If creating a new team, we need to create it after signup
-      if (creatingTeam && newTeamName.trim()) {
-        // Sign up first, then we'll create the team via trigger
-        // We'll store team name in metadata and handle via a different approach
-        // For now, create team with service role not possible from client
-        // Instead: sign up without team, then create team and update profile
-      }
-
+      // If creating a new team, first sign up, then create team and link
       const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: window.location.origin,
-          data: { full_name: fullName, team_uuid: creatingTeam ? null : finalTeamUuid || null },
+          data: {
+            full_name: fullName,
+            team_uuid: creatingTeam ? null : teamUuid || null,
+          },
         },
       });
 
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
-      } else if (signUpData.user && creatingTeam && newTeamName.trim()) {
-        // Create team and update profile
-        const { data: team, error: teamErr } = await supabase
-          .from("teams")
-          .insert({ name: newTeamName.trim(), created_by: signUpData.user.id })
-          .select()
-          .single();
+      } else if (signUpData.user) {
+        if (creatingTeam && newTeamName.trim()) {
+          // Create team then update profile
+          const { data: team, error: teamErr } = await supabase
+            .from("teams")
+            .insert({ name: newTeamName.trim(), created_by: signUpData.user.id })
+            .select()
+            .single();
 
-        if (!teamErr && team) {
-          await supabase
-            .from("profiles")
-            .update({ team_uuid: team.id })
-            .eq("user_id", signUpData.user.id);
+          if (teamErr) {
+            toast({ title: "Account created, but team creation failed", description: teamErr.message, variant: "destructive" });
+          } else if (team) {
+            // Wait briefly for the trigger to create the profile
+            await new Promise((r) => setTimeout(r, 500));
+            await supabase
+              .from("profiles")
+              .update({ team_uuid: team.id })
+              .eq("user_id", signUpData.user.id);
+            toast({ title: "Account created!", description: `Welcome to CactuSync. Team "${team.name}" created.` });
+          }
+        } else {
+          toast({ title: "Account created!", description: "Please check your email to confirm your account." });
         }
-        toast({ title: "Account created!", description: "Welcome to CactuSync." });
-      } else {
-        toast({ title: "Account created!", description: "Welcome to CactuSync." });
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -138,7 +137,6 @@ const Auth = () => {
                           value={newTeamName}
                           onChange={(e) => setNewTeamName(e.target.value)}
                           placeholder="Enter team name"
-                          required
                         />
                         <Button type="button" variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => { setCreatingTeam(false); setNewTeamName(""); }}>
                           Choose existing team instead

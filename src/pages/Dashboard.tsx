@@ -2,15 +2,16 @@ import { useAuth } from "@/lib/auth-context";
 import { useProfile } from "@/hooks/useAvailabilities";
 import { useTeams, useUpdateTeamName } from "@/hooks/useTeams";
 import { useBookings } from "@/hooks/useBookings";
+import { useIsAdmin } from "@/hooks/useAdmin";
 import { AddAvailabilityForm } from "@/components/AddAvailabilityForm";
 import { MySlotsList } from "@/components/MySlotsList";
 import { HeatmapCalendar } from "@/components/HeatmapCalendar";
 import { SuggestedMeetings } from "@/components/SuggestedMeetings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CalendarClock, LogOut, Pencil, Check, X } from "lucide-react";
+import { CalendarClock, LogOut, Pencil, Check, X, Shield } from "lucide-react";
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
@@ -19,6 +20,7 @@ const Dashboard = () => {
   const [editingTeamName, setEditingTeamName] = useState(false);
   const [teamNameInput, setTeamNameInput] = useState("");
   const bookingsState = useBookings();
+  const { data: isAdmin } = useIsAdmin();
 
   if (!user) return <Navigate to="/" replace />;
 
@@ -40,7 +42,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <CalendarClock className="w-4 h-4 text-primary" />
@@ -73,6 +75,13 @@ const Dashboard = () => {
             )}
           </div>
           <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Link to="/admin">
+                <Button variant="ghost" size="sm">
+                  <Shield className="w-4 h-4 mr-1" /> Admin
+                </Button>
+              </Link>
+            )}
             {profile && <span className="text-sm text-muted-foreground hidden sm:block">{profile.full_name}</span>}
             <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="w-4 h-4" />
@@ -81,8 +90,8 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid lg:grid-cols-[240px_1fr_260px] gap-4">
+      <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid lg:grid-cols-[220px_1fr] gap-4">
           <aside className="space-y-4">
             <div className="glass-card rounded-xl p-4 space-y-4">
               <AddAvailabilityForm />
@@ -91,15 +100,15 @@ const Dashboard = () => {
             </div>
           </aside>
 
-          <section className="glass-card rounded-xl p-4 min-w-0">
-            <HeatmapCalendar bookingsState={bookingsState} />
-          </section>
+          <div className="space-y-4 min-w-0">
+            <section className="glass-card rounded-xl p-4">
+              <HeatmapCalendar bookingsState={bookingsState} />
+            </section>
 
-          <aside>
-            <div className="glass-card rounded-xl p-4">
+            <section className="glass-card rounded-xl p-4">
               <SuggestedMeetings bookingsState={bookingsState} />
-            </div>
-          </aside>
+            </section>
+          </div>
         </div>
       </main>
     </div>
