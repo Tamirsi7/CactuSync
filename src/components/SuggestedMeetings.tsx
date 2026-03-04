@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { useTeamAvailabilities, Availability } from "@/hooks/useAvailabilities";
 import { useProfile } from "@/hooks/useAvailabilities";
-import { Sparkles, Users, Clock, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Users, Clock, Check, ChevronDown, ChevronUp, CalendarPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 interface Suggestion {
   date: string;
-  slot: string; // "14:00" format
+  slot: string;
   count: number;
   names: string[];
 }
@@ -27,7 +27,6 @@ interface Props {
   bookingsState: BookingsState;
 }
 
-// 30-minute slots
 const SLOTS: string[] = [];
 for (let h = 7; h <= 22; h++) {
   SLOTS.push(`${String(h).padStart(2, "0")}:00`);
@@ -40,6 +39,18 @@ function nextSlot(slot: string): string {
   const m = parseInt(slot.split(":")[1]);
   if (m === 0) return `${String(h).padStart(2, "0")}:30`;
   return `${String(h + 1).padStart(2, "0")}:00`;
+}
+
+function buildGoogleCalendarUrl(date: string, startTime: string, endTime: string, names: string[]): string {
+  const startDt = `${date.replace(/-/g, "")}T${startTime.replace(":", "")}00`;
+  const endDt = `${date.replace(/-/g, "")}T${endTime.replace(":", "")}00`;
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `Team Meeting`,
+    dates: `${startDt}/${endDt}`,
+    details: `Participants: ${names.join(", ")}`,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 export function SuggestedMeetings({ bookingsState }: Props) {
@@ -88,7 +99,6 @@ export function SuggestedMeetings({ bookingsState }: Props) {
         const parts = key.split("-");
         const date = parts.slice(0, 3).join("-");
         if (date < today) return false;
-        // Exclude already booked slots
         const slot = key.substring(date.length + 1);
         if (bookingsState.isSlotBooked(date, slot)) return false;
         return true;
@@ -100,16 +110,13 @@ export function SuggestedMeetings({ bookingsState }: Props) {
         return { date, slot, count: v.count, names: v.names };
       })
       .sort((a, b) => b.count - a.count || a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot))
-      .slice(0, 15);
+      .slice(0, 20);
   }, [teamData, bookingsState]);
 
   const maxMembers = teamData?.members.length || 4;
 
   const handleExpand = (idx: number, s: Suggestion) => {
-    if (expandedIdx === idx) {
-      setExpandedIdx(null);
-      return;
-    }
+    if (expandedIdx === idx) { setExpandedIdx(null); return; }
     setExpandedIdx(idx);
     setSelectedNames([...s.names]);
     setSelectedStartSlot(s.slot);
@@ -117,9 +124,7 @@ export function SuggestedMeetings({ bookingsState }: Props) {
   };
 
   const handleToggleName = (name: string) => {
-    setSelectedNames((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
-    );
+    setSelectedNames((prev) => prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]);
   };
 
   const handleBook = (s: Suggestion) => {
@@ -133,19 +138,14 @@ export function SuggestedMeetings({ bookingsState }: Props) {
     setExpandedIdx(null);
   };
 
-  // Build available end slots: consecutive slots from start where all selectedNames are available
   const getEndSlotOptions = (s: Suggestion) => {
     const startIdx = SLOTS.indexOf(selectedStartSlot || s.slot);
     if (startIdx < 0) return [nextSlot(s.slot)];
     const options: string[] = [];
     for (let i = startIdx + 1; i < SLOTS.length; i++) {
       options.push(SLOTS[i]);
-      // Check if next slot still has all selected people
-      const nextKey = `${s.date}-${SLOTS[i]}`;
       const nextSuggestion = suggestions.find((sg) => sg.date === s.date && sg.slot === SLOTS[i]);
-      if (!nextSuggestion || !selectedNames.every((n) => nextSuggestion.names.includes(n))) {
-        break;
-      }
+      if (!nextSuggestion || !selectedNames.every((n) => nextSuggestion.names.includes(n))) break;
     }
     return options.length > 0 ? options : [nextSlot(s.slot)];
   };
@@ -163,17 +163,31 @@ export function SuggestedMeetings({ bookingsState }: Props) {
       {bookingsState.bookings.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-booked">Booked</p>
-          {bookingsState.bookings.map((b) => (
-            <div key={b.id} className="p-2 rounded-lg bg-booked/10 border border-booked/30 flex items-center justify-between">
-              <div className="text-xs">
-                <span className="font-medium">{format(parseISO(b.date), "MMM d")}</span> {b.start_time}–{b.end_time}
-                <div className="text-muted-foreground">{b.participant_names.join(", ")}</div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {bookingsState.bookings.map((b) => (
+              <div key={b.id} className="p-2 rounded-lg bg-booked/10 border border-booked/30 flex items-center justify-between">
+                <div className="text-xs">
+                  <span className="font-medium">{format(parseISO(b.date), "MMM d")}</span> {b.start_time}–{b.end_time}
+                  <div className="text-muted-foreground">{b.participant_names.join(", ")}</div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <a
+                    href={buildGoogleCalendarUrl(b.date, b.start_time, b.end_time, b.participant_names)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" title="Add to Google Calendar">
+                      <CalendarPlus className="w-3.5 h-3.5" />
+                    </Button>
+                  </a>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => bookingsState.removeBooking(b.id)}>
+                    ×
+                  </Button>
+                </div>
               </div>
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => bookingsState.removeBooking(b.id)}>
-                ×
-              </Button>
-            </div>
-          ))}
+            ))}
+          </div>
           <div className="border-t border-border/50" />
         </div>
       )}
@@ -181,7 +195,7 @@ export function SuggestedMeetings({ bookingsState }: Props) {
       {suggestions.length === 0 ? (
         <p className="text-sm text-muted-foreground">No overlapping slots found yet. Add more availability!</p>
       ) : (
-        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {suggestions.map((s, i) => (
             <div key={`${s.date}-${s.slot}`}>
               <div
@@ -207,9 +221,7 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {s.names.map((n) => (
-                    <span key={n} className="text-xs px-2 py-0.5 rounded-full bg-accent text-accent-foreground">
-                      {n}
-                    </span>
+                    <span key={n} className="text-xs px-2 py-0.5 rounded-full bg-accent text-accent-foreground">{n}</span>
                   ))}
                 </div>
               </div>
@@ -220,10 +232,7 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                   <div className="space-y-1.5">
                     {s.names.map((n) => (
                       <label key={n} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox
-                          checked={selectedNames.includes(n)}
-                          onCheckedChange={() => handleToggleName(n)}
-                        />
+                        <Checkbox checked={selectedNames.includes(n)} onCheckedChange={() => handleToggleName(n)} />
                         {n}
                       </label>
                     ))}
@@ -232,20 +241,14 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Start</p>
                       <Select value={selectedStartSlot} onValueChange={(v) => { setSelectedStartSlot(v); setSelectedEndSlot(nextSlot(v)); }}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={s.slot}>{s.slot}</SelectItem>
-                        </SelectContent>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value={s.slot}>{s.slot}</SelectItem></SelectContent>
                       </Select>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">End</p>
                       <Select value={selectedEndSlot} onValueChange={setSelectedEndSlot}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {getEndSlotOptions(s).map((opt) => (
                             <SelectItem key={opt} value={opt}>{opt}</SelectItem>
@@ -255,8 +258,7 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                     </div>
                   </div>
                   <Button size="sm" className="w-full" disabled={selectedNames.length === 0} onClick={() => handleBook(s)}>
-                    <Check className="w-3.5 h-3.5 mr-1" />
-                    Book this slot
+                    <Check className="w-3.5 h-3.5 mr-1" /> Book this slot
                   </Button>
                 </div>
               )}

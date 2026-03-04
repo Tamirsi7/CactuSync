@@ -11,7 +11,6 @@ export interface Team {
 }
 
 export function useTeams() {
-  const { user } = useAuth();
   return useQuery({
     queryKey: ["teams"],
     queryFn: async () => {
@@ -22,7 +21,6 @@ export function useTeams() {
       if (error) throw error;
       return data as Team[];
     },
-    enabled: !!user,
   });
 }
 
