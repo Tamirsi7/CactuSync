@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ALTER COLUMN team_id DROP NOT NULL, ALTER COLUMN team_id SET DEFAULT 0;
