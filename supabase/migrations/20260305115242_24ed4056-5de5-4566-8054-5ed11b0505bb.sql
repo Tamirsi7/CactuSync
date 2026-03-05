@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles DROP CONSTRAINT profiles_team_id_check;
