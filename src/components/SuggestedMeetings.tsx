@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { useTeamAvailabilities, Availability } from "@/hooks/useAvailabilities";
 import { useProfile } from "@/hooks/useAvailabilities";
-import { Sparkles, Users, Clock, Check, ChevronDown, ChevronUp, CalendarPlus } from "lucide-react";
+import { Sparkles, Users, Clock, Check, ChevronDown, ChevronUp, CalendarPlus, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -53,11 +53,17 @@ function buildGoogleCalendarUrl(date: string, startTime: string, endTime: string
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+interface DayGroup {
+  date: string;
+  slots: Suggestion[];
+  maxCount: number;
+}
+
 export function SuggestedMeetings({ bookingsState }: Props) {
   const { data: profile } = useProfile();
   const teamUuid = profile?.team_uuid;
   const { data: teamData, isLoading } = useTeamAvailabilities(teamUuid);
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
   const [selectedStartSlot, setSelectedStartSlot] = useState("");
   const [selectedEndSlot, setSelectedEndSlot] = useState("");
@@ -109,45 +115,84 @@ export function SuggestedMeetings({ bookingsState }: Props) {
         const slot = key.substring(date.length + 1);
         return { date, slot, count: v.count, names: v.names };
       })
-      .sort((a, b) => b.count - a.count || a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot))
-      .slice(0, 20);
+      .sort((a, b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot));
   }, [teamData, bookingsState]);
+
+  // Group suggestions by day
+  const dayGroups = useMemo((): DayGroup[] => {
+    const groups: Record<string, Suggestion[]> = {};
+    suggestions.forEach((s) => {
+      if (!groups[s.date]) groups[s.date] = [];
+      groups[s.date].push(s);
+    });
+    return Object.entries(groups)
+      .map(([date, slots]) => ({
+        date,
+        slots: slots.sort((a, b) => a.slot.localeCompare(b.slot)),
+        maxCount: Math.max(...slots.map((s) => s.count)),
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [suggestions]);
 
   const maxMembers = teamData?.members.length || 4;
 
-  const handleExpand = (idx: number, s: Suggestion) => {
-    if (expandedIdx === idx) { setExpandedIdx(null); return; }
-    setExpandedIdx(idx);
-    setSelectedNames([...s.names]);
-    setSelectedStartSlot(s.slot);
-    setSelectedEndSlot(nextSlot(s.slot));
+  const handleExpandDate = (date: string) => {
+    if (expandedDate === date) {
+      setExpandedDate(null);
+      return;
+    }
+    setExpandedDate(date);
+    // Pre-select all available names for the first slot
+    const group = dayGroups.find((g) => g.date === date);
+    if (group && group.slots.length > 0) {
+      // Find names common to most slots
+      const allNames = new Set(group.slots.flatMap((s) => s.names));
+      setSelectedNames([...allNames]);
+      setSelectedStartSlot(group.slots[0].slot);
+      const lastSlot = group.slots[group.slots.length - 1];
+      setSelectedEndSlot(nextSlot(lastSlot.slot));
+    }
   };
 
   const handleToggleName = (name: string) => {
     setSelectedNames((prev) => prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]);
   };
 
-  const handleBook = (s: Suggestion) => {
-    if (selectedNames.length === 0) return;
+  const handleBook = (date: string) => {
+    if (selectedNames.length === 0 || !selectedStartSlot || !selectedEndSlot) return;
     bookingsState.addBooking({
-      date: s.date,
-      startSlot: selectedStartSlot || s.slot,
-      endSlot: selectedEndSlot || nextSlot(s.slot),
+      date,
+      startSlot: selectedStartSlot,
+      endSlot: selectedEndSlot,
       names: selectedNames,
     });
-    setExpandedIdx(null);
+    setExpandedDate(null);
   };
 
-  const getEndSlotOptions = (s: Suggestion) => {
-    const startIdx = SLOTS.indexOf(selectedStartSlot || s.slot);
-    if (startIdx < 0) return [nextSlot(s.slot)];
+  // Get valid start slot options for a day (slots where at least one selected person is available)
+  const getStartOptions = (group: DayGroup) => {
+    return group.slots
+      .filter((s) => selectedNames.length === 0 || selectedNames.some((n) => s.names.includes(n)))
+      .map((s) => s.slot);
+  };
+
+  // Get valid end slot options based on selected start
+  const getEndOptions = (group: DayGroup) => {
+    const startIdx = group.slots.findIndex((s) => s.slot === selectedStartSlot);
+    if (startIdx < 0) return [nextSlot(group.slots[0].slot)];
     const options: string[] = [];
-    for (let i = startIdx + 1; i < SLOTS.length; i++) {
-      options.push(SLOTS[i]);
-      const nextSuggestion = suggestions.find((sg) => sg.date === s.date && sg.slot === SLOTS[i]);
-      if (!nextSuggestion || !selectedNames.every((n) => nextSuggestion.names.includes(n))) break;
+    for (let i = startIdx; i < group.slots.length; i++) {
+      const s = group.slots[i];
+      if (selectedNames.length > 0 && !selectedNames.some((n) => s.names.includes(n))) break;
+      options.push(nextSlot(s.slot));
     }
-    return options.length > 0 ? options : [nextSlot(s.slot)];
+    return options.length > 0 ? options : [nextSlot(group.slots[startIdx].slot)];
+  };
+
+  // All unique names across a day's slots
+  const getDayNames = (group: DayGroup) => {
+    const names = new Set(group.slots.flatMap((s) => s.names));
+    return [...names];
   };
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading...</div>;
@@ -167,7 +212,7 @@ export function SuggestedMeetings({ bookingsState }: Props) {
             {bookingsState.bookings.map((b) => (
               <div key={b.id} className="p-2 rounded-lg bg-booked/10 border border-booked/30 flex items-center justify-between">
                 <div className="text-xs">
-                  <span className="font-medium">{format(parseISO(b.date), "MMM d")}</span> {b.start_time}–{b.end_time}
+                  <span className="font-medium">{format(parseISO(b.date), "EEE, MMM d")}</span> {b.start_time}–{b.end_time}
                   <div className="text-muted-foreground">{b.participant_names.join(", ")}</div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -192,73 +237,108 @@ export function SuggestedMeetings({ bookingsState }: Props) {
         </div>
       )}
 
-      {suggestions.length === 0 ? (
+      {dayGroups.length === 0 ? (
         <p className="text-sm text-muted-foreground">No overlapping slots found yet. Add more availability!</p>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {suggestions.map((s, i) => (
-            <div key={`${s.date}-${s.slot}`}>
-              <div
+        <div className="space-y-2">
+          {dayGroups.map((group) => (
+            <div key={group.date} className="rounded-lg border border-border/50 overflow-hidden">
+              {/* Day header */}
+              <button
                 className={cn(
-                  "p-3 rounded-lg bg-muted/40 border border-border/50 space-y-2 transition-all cursor-pointer",
-                  expandedIdx === i ? "border-primary/40" : "hover:border-primary/20"
+                  "w-full p-3 flex items-center justify-between text-left transition-colors",
+                  expandedDate === group.date ? "bg-primary/5 border-b border-border/50" : "hover:bg-muted/40"
                 )}
-                onClick={() => handleExpand(i, s)}
+                onClick={() => handleExpandDate(group.date)}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-sm font-medium">
-                      {format(parseISO(s.date), "MMM d")} · {s.slot}
-                    </span>
+                <div className="flex items-center gap-3">
+                  <div className="text-center min-w-[48px]">
+                    <p className="text-xs text-muted-foreground">{format(parseISO(group.date), "EEE")}</p>
+                    <p className="text-lg font-bold">{format(parseISO(group.date), "d")}</p>
+                    <p className="text-xs text-muted-foreground">{format(parseISO(group.date), "MMM")}</p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Badge variant={s.count === maxMembers ? "default" : "secondary"} className="text-xs">
-                      {s.count}/{maxMembers}
-                    </Badge>
-                    {expandedIdx === i ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  <div>
+                    <p className="text-sm font-medium">
+                      {group.slots.length} available slot{group.slots.length > 1 ? "s" : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {group.slots[0].slot} – {nextSlot(group.slots[group.slots.length - 1].slot)}
+                    </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {s.names.map((n) => (
-                    <span key={n} className="text-xs px-2 py-0.5 rounded-full bg-accent text-accent-foreground">{n}</span>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <Badge variant={group.maxCount === maxMembers ? "default" : "secondary"} className="text-xs">
+                    up to {group.maxCount}/{maxMembers}
+                  </Badge>
+                  {expandedDate === group.date ? <ChevronUp className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </div>
-              </div>
+              </button>
 
-              {expandedIdx === i && (
-                <div className="mt-1 p-3 rounded-lg border border-primary/20 bg-card space-y-3">
-                  <p className="text-xs font-medium text-muted-foreground">Select participants & time</p>
-                  <div className="space-y-1.5">
-                    {s.names.map((n) => (
-                      <label key={n} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox checked={selectedNames.includes(n)} onCheckedChange={() => handleToggleName(n)} />
-                        {n}
-                      </label>
-                    ))}
+              {/* Expanded day drilldown */}
+              {expandedDate === group.date && (
+                <div className="p-4 space-y-4 bg-card">
+                  {/* Time slot overview */}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Available slots</p>
+                    <div className="flex flex-wrap gap-1">
+                      {group.slots.map((s) => (
+                        <div
+                          key={s.slot}
+                          className={cn(
+                            "px-2 py-1 rounded text-xs border",
+                            s.count === maxMembers
+                              ? "bg-primary/10 border-primary/30 text-primary font-medium"
+                              : "bg-muted/40 border-border/50"
+                          )}
+                          title={s.names.join(", ")}
+                        >
+                          {s.slot} <span className="text-muted-foreground">({s.count})</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+
+                  {/* Participant selection */}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Participants</p>
+                    <div className="flex flex-wrap gap-2">
+                      {getDayNames(group).map((n) => (
+                        <label key={n} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                          <Checkbox checked={selectedNames.includes(n)} onCheckedChange={() => handleToggleName(n)} />
+                          {n}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Time range selection */}
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Start</p>
+                      <p className="text-xs text-muted-foreground mb-1">Start time</p>
                       <Select value={selectedStartSlot} onValueChange={(v) => { setSelectedStartSlot(v); setSelectedEndSlot(nextSlot(v)); }}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value={s.slot}>{s.slot}</SelectItem></SelectContent>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {getStartOptions(group).map((opt) => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">End</p>
+                      <p className="text-xs text-muted-foreground mb-1">End time</p>
                       <Select value={selectedEndSlot} onValueChange={setSelectedEndSlot}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {getEndSlotOptions(s).map((opt) => (
+                          {getEndOptions(group).map((opt) => (
                             <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                  <Button size="sm" className="w-full" disabled={selectedNames.length === 0} onClick={() => handleBook(s)}>
-                    <Check className="w-3.5 h-3.5 mr-1" /> Book this slot
+
+                  <Button className="w-full" disabled={selectedNames.length === 0} onClick={() => handleBook(group.date)}>
+                    <Check className="w-4 h-4 mr-1.5" /> Book {selectedStartSlot}–{selectedEndSlot}
                   </Button>
                 </div>
               )}
