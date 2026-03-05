@@ -87,7 +87,7 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
-          team_id: number
+          team_id: number | null
           team_uuid: string | null
           updated_at: string
           user_id: string
@@ -96,7 +96,7 @@ export type Database = {
           created_at?: string
           full_name?: string
           id?: string
-          team_id: number
+          team_id?: number | null
           team_uuid?: string | null
           updated_at?: string
           user_id: string
@@ -105,7 +105,7 @@ export type Database = {
           created_at?: string
           full_name?: string
           id?: string
-          team_id?: number
+          team_id?: number | null
           team_uuid?: string | null
           updated_at?: string
           user_id?: string
