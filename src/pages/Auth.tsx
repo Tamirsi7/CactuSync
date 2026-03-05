@@ -36,6 +36,10 @@ const Auth = () => {
 
     if (isSignUp) {
       // If creating a new team, first sign up, then create team and link
+      let finalTeamUuid: string | null = creatingTeam ? null : teamUuid || null;
+
+      // If creating a new team, create it first (unauthenticated insert won't work,
+      // so we sign up first, then create team)
       const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
@@ -43,16 +47,18 @@ const Auth = () => {
           emailRedirectTo: window.location.origin,
           data: {
             full_name: fullName,
-            team_uuid: creatingTeam ? null : teamUuid || null,
+            team_uuid: finalTeamUuid,
           },
         },
       });
 
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
-      } else if (signUpData.user) {
+      } else if (signUpData.user && signUpData.session) {
+        // User is auto-confirmed and has a session
         if (creatingTeam && newTeamName.trim()) {
-          // Create team then update profile
+          // Wait for trigger to create profile
+          await new Promise((r) => setTimeout(r, 1000));
           const { data: team, error: teamErr } = await supabase
             .from("teams")
             .insert({ name: newTeamName.trim(), created_by: signUpData.user.id })
@@ -62,8 +68,6 @@ const Auth = () => {
           if (teamErr) {
             toast({ title: "Account created, but team creation failed", description: teamErr.message, variant: "destructive" });
           } else if (team) {
-            // Wait briefly for the trigger to create the profile
-            await new Promise((r) => setTimeout(r, 500));
             await supabase
               .from("profiles")
               .update({ team_uuid: team.id })
@@ -71,8 +75,11 @@ const Auth = () => {
             toast({ title: "Account created!", description: `Welcome to CactuSync. Team "${team.name}" created.` });
           }
         } else {
-          toast({ title: "Account created!", description: "Please check your email to confirm your account." });
+          toast({ title: "Welcome!", description: "You're signed in." });
         }
+      } else if (signUpData.user) {
+        // Email confirmation required
+        toast({ title: "Account created!", description: "Please check your email to confirm your account." });
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });

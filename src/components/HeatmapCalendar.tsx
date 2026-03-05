@@ -50,7 +50,7 @@ export function HeatmapCalendar({ bookingsState }: Props) {
   const isDragging = useRef(false);
 
   const weekStart = useMemo(() => {
-    const base = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const base = startOfWeek(new Date(), { weekStartsOn: 0 });
     return addDays(base, weekOffset * 7);
   }, [weekOffset]);
 
