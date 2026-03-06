@@ -78,8 +78,8 @@ export function useAddAvailability() {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my-availabilities"] });
-      qc.invalidateQueries({ queryKey: ["team-availabilities"] });
+      qc.invalidateQueries({ queryKey: ["my-availabilities"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["team-availabilities"], refetchType: "all" });
       toast({ title: "Availability added" });
     },
     onError: (e: any) => {

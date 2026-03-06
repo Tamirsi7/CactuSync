@@ -56,15 +56,15 @@ export function useDeleteProfile() {
   const { toast } = useToast();
   return useMutation({
     mutationFn: async (userId: string) => {
-      // Delete availabilities first
-      await supabase.from("availabilities").delete().eq("user_id", userId);
-      // Delete profile
-      const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: { user_id: userId },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["all-profiles"] });
-      toast({ title: "User removed" });
+      toast({ title: "User fully deleted" });
     },
     onError: (e: any) => {
       toast({ title: "Error", description: e.message, variant: "destructive" });
