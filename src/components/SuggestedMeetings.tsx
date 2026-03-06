@@ -53,10 +53,16 @@ function buildGoogleCalendarUrl(date: string, startTime: string, endTime: string
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+interface TimeRange {
+  start: string;
+  end: string;
+}
+
 interface DayGroup {
   date: string;
   slots: Suggestion[];
   maxCount: number;
+  ranges: TimeRange[];
 }
 
 export function SuggestedMeetings({ bookingsState }: Props) {
@@ -126,11 +132,25 @@ export function SuggestedMeetings({ bookingsState }: Props) {
       groups[s.date].push(s);
     });
     return Object.entries(groups)
-      .map(([date, slots]) => ({
-        date,
-        slots: slots.sort((a, b) => a.slot.localeCompare(b.slot)),
-        maxCount: Math.max(...slots.map((s) => s.count)),
-      }))
+      .map(([date, slots]) => {
+        const sorted = slots.sort((a, b) => a.slot.localeCompare(b.slot));
+        // Build contiguous time ranges from sorted slots
+        const ranges: TimeRange[] = [];
+        sorted.forEach((s) => {
+          const end = nextSlot(s.slot);
+          if (ranges.length > 0 && ranges[ranges.length - 1].end === s.slot) {
+            ranges[ranges.length - 1].end = end;
+          } else {
+            ranges.push({ start: s.slot, end });
+          }
+        });
+        return {
+          date,
+          slots: sorted,
+          maxCount: Math.max(...sorted.map((s) => s.count)),
+          ranges,
+        };
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [suggestions]);
 
@@ -262,7 +282,9 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                       {group.slots.length} available slot{group.slots.length > 1 ? "s" : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {group.slots[0].slot} – {nextSlot(group.slots[group.slots.length - 1].slot)}
+                      {group.ranges.map((r, i) => (
+                        <span key={i}>{i > 0 && ", "}{r.start}–{r.end}</span>
+                      ))}
                     </p>
                   </div>
                 </div>
