@@ -19,6 +19,7 @@ const Auth = () => {
   const [creatingTeam, setCreatingTeam] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch teams without requiring auth (public SELECT policy)
   const { data: teams } = useQuery({
