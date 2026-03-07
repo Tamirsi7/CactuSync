@@ -127,6 +127,7 @@ const Admin = () => {
               <thead>
                 <tr className="border-b border-border/50">
                   <th className="text-left px-4 py-3 text-muted-foreground font-medium">Name</th>
+                  <th className="text-left px-4 py-3 text-muted-foreground font-medium">Email</th>
                   <th className="text-left px-4 py-3 text-muted-foreground font-medium">Team</th>
                   <th className="text-right px-4 py-3 text-muted-foreground font-medium">Actions</th>
                 </tr>
