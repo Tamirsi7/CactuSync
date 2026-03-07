@@ -127,6 +127,7 @@ const Admin = () => {
               <thead>
                 <tr className="border-b border-border/50">
                   <th className="text-left px-4 py-3 text-muted-foreground font-medium">Name</th>
+                  <th className="text-left px-4 py-3 text-muted-foreground font-medium">Email</th>
                   <th className="text-left px-4 py-3 text-muted-foreground font-medium">Team</th>
                   <th className="text-right px-4 py-3 text-muted-foreground font-medium">Actions</th>
                 </tr>
@@ -141,6 +142,7 @@ const Admin = () => {
                         <span className="font-medium">{p.full_name || "—"}</span>
                       )}
                     </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{p.email || "—"}</td>
                     <td className="px-4 py-3">
                       {editingUserId === p.user_id ? (
                         <Select value={userTeamInput || "none"} onValueChange={(v) => setUserTeamInput(v === "none" ? null : v)}>

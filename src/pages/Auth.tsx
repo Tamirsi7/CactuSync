@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarClock, Users, Plus } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -19,6 +19,7 @@ const Auth = () => {
   const [creatingTeam, setCreatingTeam] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch teams without requiring auth (public SELECT policy)
   const { data: teams } = useQuery({
@@ -72,6 +73,10 @@ const Auth = () => {
               .from("profiles")
               .update({ team_uuid: team.id })
               .eq("user_id", signUpData.user.id);
+            // Invalidate profile cache so Dashboard sees updated team immediately
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+            queryClient.invalidateQueries({ queryKey: ["teams"] });
+            queryClient.invalidateQueries({ queryKey: ["public-teams"] });
             toast({ title: "Account created!", description: `Welcome to CactuSync. Team "${team.name}" created.` });
           }
         } else {

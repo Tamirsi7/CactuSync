@@ -165,12 +165,12 @@ export function SuggestedMeetings({ bookingsState }: Props) {
     // Pre-select all available names for the first slot
     const group = dayGroups.find((g) => g.date === date);
     if (group && group.slots.length > 0) {
-      // Find names common to most slots
       const allNames = new Set(group.slots.flatMap((s) => s.names));
       setSelectedNames([...allNames]);
       setSelectedStartSlot(group.slots[0].slot);
-      const lastSlot = group.slots[group.slots.length - 1];
-      setSelectedEndSlot(nextSlot(lastSlot.slot));
+      // Set end to end of first contiguous range only
+      const firstRange = group.ranges[0];
+      setSelectedEndSlot(firstRange ? firstRange.end : nextSlot(group.slots[0].slot));
     }
   };
 
@@ -204,6 +204,8 @@ export function SuggestedMeetings({ bookingsState }: Props) {
     for (let i = startIdx; i < group.slots.length; i++) {
       const s = group.slots[i];
       if (selectedNames.length > 0 && !selectedNames.some((n) => s.names.includes(n))) break;
+      // Check for time gap: if this slot isn't contiguous with the previous one, stop
+      if (i > startIdx && nextSlot(group.slots[i - 1].slot) !== s.slot) break;
       options.push(nextSlot(s.slot));
     }
     return options.length > 0 ? options : [nextSlot(group.slots[startIdx].slot)];
