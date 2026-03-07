@@ -74,7 +74,9 @@ const Auth = () => {
               .update({ team_uuid: team.id })
               .eq("user_id", signUpData.user.id);
             // Invalidate profile cache so Dashboard sees updated team immediately
-            const { QueryClient } = await import("@tanstack/react-query");
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+            queryClient.invalidateQueries({ queryKey: ["teams"] });
+            queryClient.invalidateQueries({ queryKey: ["public-teams"] });
             toast({ title: "Account created!", description: `Welcome to CactuSync. Team "${team.name}" created.` });
           }
         } else {
