@@ -34,7 +34,6 @@ Deno.serve(async (req) => {
     }
 
     // Check admin role
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { data: isAdmin } = await adminClient.rpc("has_role", {
       _user_id: caller.id,
       _role: "admin",

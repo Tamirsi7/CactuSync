@@ -165,12 +165,12 @@ export function SuggestedMeetings({ bookingsState }: Props) {
     // Pre-select all available names for the first slot
     const group = dayGroups.find((g) => g.date === date);
     if (group && group.slots.length > 0) {
-      // Find names common to most slots
       const allNames = new Set(group.slots.flatMap((s) => s.names));
       setSelectedNames([...allNames]);
       setSelectedStartSlot(group.slots[0].slot);
-      const lastSlot = group.slots[group.slots.length - 1];
-      setSelectedEndSlot(nextSlot(lastSlot.slot));
+      // Set end to end of first contiguous range only
+      const firstRange = group.ranges[0];
+      setSelectedEndSlot(firstRange ? firstRange.end : nextSlot(group.slots[0].slot));
     }
   };
 
