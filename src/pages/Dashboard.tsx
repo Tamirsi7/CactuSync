@@ -9,7 +9,9 @@ import { HeatmapCalendar } from "@/components/HeatmapCalendar";
 import { SuggestedMeetings } from "@/components/SuggestedMeetings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CalendarClock, LogOut, Pencil, Check, X, Shield } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MyTeam } from "@/components/MyTeam";
+import { CalendarClock, LogOut, Pencil, Check, X, Shield, Users, Clock } from "lucide-react";
 import { useState } from "react";
 import { Navigate, Link } from "react-router-dom";
 
