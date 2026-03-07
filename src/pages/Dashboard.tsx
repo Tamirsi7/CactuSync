@@ -9,7 +9,9 @@ import { HeatmapCalendar } from "@/components/HeatmapCalendar";
 import { SuggestedMeetings } from "@/components/SuggestedMeetings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CalendarClock, LogOut, Pencil, Check, X, Shield } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MyTeam } from "@/components/MyTeam";
+import { CalendarClock, LogOut, Pencil, Check, X, Shield, Users, Clock } from "lucide-react";
 import { useState } from "react";
 import { Navigate, Link } from "react-router-dom";
 
@@ -93,11 +95,28 @@ const Dashboard = () => {
       <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid lg:grid-cols-[220px_1fr] gap-4">
           <aside className="space-y-4">
-            <div className="glass-card rounded-xl p-4 space-y-4">
-              <AddAvailabilityForm />
-              <div className="border-t border-border/50" />
-              <MySlotsList />
-            </div>
+            <Tabs defaultValue="availability" className="w-full">
+              <TabsList className="w-full grid grid-cols-2 mb-3">
+                <TabsTrigger value="availability" className="text-xs gap-1">
+                  <Clock className="w-3 h-3" /> Slots
+                </TabsTrigger>
+                <TabsTrigger value="team" className="text-xs gap-1">
+                  <Users className="w-3 h-3" /> My Team
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="availability">
+                <div className="glass-card rounded-xl p-4 space-y-4">
+                  <AddAvailabilityForm />
+                  <div className="border-t border-border/50" />
+                  <MySlotsList />
+                </div>
+              </TabsContent>
+              <TabsContent value="team">
+                <div className="glass-card rounded-xl p-4">
+                  <MyTeam />
+                </div>
+              </TabsContent>
+            </Tabs>
           </aside>
 
           <div className="space-y-4 min-w-0">
