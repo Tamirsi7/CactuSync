@@ -204,6 +204,8 @@ export function SuggestedMeetings({ bookingsState }: Props) {
     for (let i = startIdx; i < group.slots.length; i++) {
       const s = group.slots[i];
       if (selectedNames.length > 0 && !selectedNames.some((n) => s.names.includes(n))) break;
+      // Check for time gap: if this slot isn't contiguous with the previous one, stop
+      if (i > startIdx && nextSlot(group.slots[i - 1].slot) !== s.slot) break;
       options.push(nextSlot(s.slot));
     }
     return options.length > 0 ? options : [nextSlot(group.slots[startIdx].slot)];
