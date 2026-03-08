@@ -1,6 +1,7 @@
 import { useAuth } from "@/lib/auth-context";
 import { useIsAdmin, useAllProfiles, useAllTeams, useDeleteProfile, useDeleteTeam, useUpdateProfile } from "@/hooks/useAdmin";
 import { useUpdateTeamName } from "@/hooks/useTeams";
+import { useAllJoinRequests, useApproveJoinRequest, useRejectJoinRequest } from "@/hooks/useJoinRequests";
 import { Navigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
