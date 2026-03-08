@@ -47,17 +47,19 @@ export function useCreateJoinRequest() {
 
 // Admin hooks
 export function useAllJoinRequests() {
+  const { user } = useAuth();
   return useQuery({
     queryKey: ["all-join-requests"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("team_join_requests")
-        .select("*, teams:team_id(id, name), profiles:user_id(user_id, full_name, email)")
+        .select("*, teams:team_id(id, name), profiles!team_join_requests_user_id_fkey(user_id, full_name, email)")
         .eq("status", "pending")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data;
     },
+    enabled: !!user,
   });
 }
 
