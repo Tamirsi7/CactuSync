@@ -93,7 +93,7 @@ const Dashboard = () => {
       </header>
 
       <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid lg:grid-cols-[220px_1fr] gap-4">
+        <div className="grid lg:grid-cols-[340px_1fr] gap-6">
           <aside className="space-y-4">
             <Tabs defaultValue="availability" className="w-full">
               <TabsList className="w-full grid grid-cols-2 mb-3">
