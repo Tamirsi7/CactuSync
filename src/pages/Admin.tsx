@@ -18,6 +18,9 @@ const Admin = () => {
   const deleteTeam = useDeleteTeam();
   const updateProfile = useUpdateProfile();
   const updateTeamName = useUpdateTeamName();
+  const { data: joinRequests } = useAllJoinRequests();
+  const approveRequest = useApproveJoinRequest();
+  const rejectRequest = useRejectJoinRequest();
 
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [teamNameInput, setTeamNameInput] = useState("");
