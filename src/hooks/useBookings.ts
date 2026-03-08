@@ -70,6 +70,30 @@ export function useBookings() {
     },
   });
 
+  const updateParticipantsMutation = useMutation({
+    mutationFn: async ({ id, names }: { id: string; names: string[] }) => {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ participant_names: names })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bookings", teamUuid] });
+      toast({ title: "Participants updated" });
+    },
+    onError: (e: any) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const updateParticipants = useCallback(
+    (id: string, names: string[]) => {
+      updateParticipantsMutation.mutate({ id, names });
+    },
+    [updateParticipantsMutation]
+  );
+
   const addBooking = useCallback(
     (b: { date: string; startSlot: string; endSlot: string; names: string[] }) => {
       addMutation.mutate(b);
@@ -104,5 +128,5 @@ export function useBookings() {
     [bookings]
   );
 
-  return { bookings, addBooking, removeBooking, isSlotBooked, getBookingAt };
+  return { bookings, addBooking, removeBooking, updateParticipants, isSlotBooked, getBookingAt };
 }

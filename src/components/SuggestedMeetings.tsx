@@ -2,11 +2,13 @@ import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { useTeamAvailabilities, Availability } from "@/hooks/useAvailabilities";
 import { useProfile } from "@/hooks/useAvailabilities";
-import { Sparkles, Users, Clock, Check, ChevronDown, ChevronUp, CalendarPlus, ChevronRight } from "lucide-react";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { Sparkles, Users, Clock, Check, ChevronUp, CalendarPlus, ChevronRight, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 interface Suggestion {
@@ -20,6 +22,7 @@ interface BookingsState {
   bookings: { id: string; date: string; start_time: string; end_time: string; participant_names: string[] }[];
   addBooking: (b: { date: string; startSlot: string; endSlot: string; names: string[] }) => void;
   removeBooking: (id: string) => void;
+  updateParticipants: (id: string, names: string[]) => void;
   isSlotBooked: (date: string, slot: string) => boolean;
 }
 
@@ -42,8 +45,8 @@ function nextSlot(slot: string): string {
 }
 
 function buildGoogleCalendarUrl(date: string, startTime: string, endTime: string, names: string[]): string {
-  const startDt = `${date.replace(/-/g, "")}T${startTime.replace(":", "")}00`;
-  const endDt = `${date.replace(/-/g, "")}T${endTime.replace(":", "")}00`;
+  const startDt = `${date.replace(/-/g, "")}T${startTime.replace(/:/g, "")}00`;
+  const endDt = `${date.replace(/-/g, "")}T${endTime.replace(/:/g, "")}00`;
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: `Team Meeting`,
@@ -51,6 +54,11 @@ function buildGoogleCalendarUrl(date: string, startTime: string, endTime: string
     details: `Participants: ${names.join(", ")}`,
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function formatDateLabel(dateStr: string): string {
+  const d = parseISO(dateStr);
+  return format(d, "EEEE, dd/MM/yy");
 }
 
 interface TimeRange {
@@ -63,6 +71,87 @@ interface DayGroup {
   slots: Suggestion[];
   maxCount: number;
   ranges: TimeRange[];
+}
+
+// --- Add People Dialog ---
+function AddPeopleDialog({
+  booking,
+  onUpdate,
+}: {
+  booking: { id: string; date: string; start_time: string; end_time: string; participant_names: string[] };
+  onUpdate: (id: string, names: string[]) => void;
+}) {
+  const { data: profile } = useProfile();
+  const teamUuid = profile?.team_uuid;
+  const { data: members = [] } = useTeamMembers(teamUuid);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen) {
+      setSelected([...booking.participant_names]);
+    }
+    setOpen(isOpen);
+  };
+
+  const allNames = members.map((m) => m.full_name).filter(Boolean);
+  const availableToAdd = allNames.filter((n) => !booking.participant_names.includes(n));
+
+  const handleToggle = (name: string) => {
+    setSelected((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
+  };
+
+  const handleSave = () => {
+    onUpdate(booking.id, selected);
+    setOpen(false);
+  };
+
+  const newNames = selected.filter((n) => !booking.participant_names.includes(n));
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" title="Add people">
+          <UserPlus className="w-3.5 h-3.5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Participants</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground mb-3">
+          {formatDateLabel(booking.date)} · {booking.start_time}–{booking.end_time}
+        </p>
+        <div className="space-y-2 max-h-60 overflow-y-auto">
+          {allNames.map((name) => (
+            <label key={name} className="flex items-center gap-2 text-sm cursor-pointer p-1.5 rounded hover:bg-muted/40">
+              <Checkbox checked={selected.includes(name)} onCheckedChange={() => handleToggle(name)} />
+              <span>{name}</span>
+              {booking.participant_names.includes(name) && (
+                <Badge variant="secondary" className="text-[10px] ml-auto">current</Badge>
+              )}
+            </label>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 pt-3">
+          <Button className="flex-1" disabled={selected.length === 0} onClick={handleSave}>
+            <Check className="w-4 h-4 mr-1.5" /> Save
+          </Button>
+          {newNames.length > 0 && (
+            <a
+              href={buildGoogleCalendarUrl(booking.date, booking.start_time, booking.end_time, selected)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline" size="sm">
+                <CalendarPlus className="w-3.5 h-3.5 mr-1" /> Google Cal
+              </Button>
+            </a>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function SuggestedMeetings({ bookingsState }: Props) {
@@ -124,7 +213,6 @@ export function SuggestedMeetings({ bookingsState }: Props) {
       .sort((a, b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot));
   }, [teamData, bookingsState]);
 
-  // Group suggestions by day
   const dayGroups = useMemo((): DayGroup[] => {
     const groups: Record<string, Suggestion[]> = {};
     suggestions.forEach((s) => {
@@ -134,7 +222,6 @@ export function SuggestedMeetings({ bookingsState }: Props) {
     return Object.entries(groups)
       .map(([date, slots]) => {
         const sorted = slots.sort((a, b) => a.slot.localeCompare(b.slot));
-        // Build contiguous time ranges from sorted slots
         const ranges: TimeRange[] = [];
         sorted.forEach((s) => {
           const end = nextSlot(s.slot);
@@ -162,20 +249,18 @@ export function SuggestedMeetings({ bookingsState }: Props) {
       return;
     }
     setExpandedDate(date);
-    // Pre-select all available names for the first slot
     const group = dayGroups.find((g) => g.date === date);
     if (group && group.slots.length > 0) {
       const allNames = new Set(group.slots.flatMap((s) => s.names));
       setSelectedNames([...allNames]);
       setSelectedStartSlot(group.slots[0].slot);
-      // Set end to end of first contiguous range only
       const firstRange = group.ranges[0];
       setSelectedEndSlot(firstRange ? firstRange.end : nextSlot(group.slots[0].slot));
     }
   };
 
   const handleToggleName = (name: string) => {
-    setSelectedNames((prev) => prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]);
+    setSelectedNames((prev) => (prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]));
   };
 
   const handleBook = (date: string) => {
@@ -189,14 +274,12 @@ export function SuggestedMeetings({ bookingsState }: Props) {
     setExpandedDate(null);
   };
 
-  // Get valid start slot options for a day (slots where at least one selected person is available)
   const getStartOptions = (group: DayGroup) => {
     return group.slots
       .filter((s) => selectedNames.length === 0 || selectedNames.some((n) => s.names.includes(n)))
       .map((s) => s.slot);
   };
 
-  // Get valid end slot options based on selected start
   const getEndOptions = (group: DayGroup) => {
     const startIdx = group.slots.findIndex((s) => s.slot === selectedStartSlot);
     if (startIdx < 0) return [nextSlot(group.slots[0].slot)];
@@ -204,14 +287,12 @@ export function SuggestedMeetings({ bookingsState }: Props) {
     for (let i = startIdx; i < group.slots.length; i++) {
       const s = group.slots[i];
       if (selectedNames.length > 0 && !selectedNames.some((n) => s.names.includes(n))) break;
-      // Check for time gap: if this slot isn't contiguous with the previous one, stop
       if (i > startIdx && nextSlot(group.slots[i - 1].slot) !== s.slot) break;
       options.push(nextSlot(s.slot));
     }
     return options.length > 0 ? options : [nextSlot(group.slots[startIdx].slot)];
   };
 
-  // All unique names across a day's slots
   const getDayNames = (group: DayGroup) => {
     const names = new Set(group.slots.flatMap((s) => s.names));
     return [...names];
@@ -234,10 +315,11 @@ export function SuggestedMeetings({ bookingsState }: Props) {
             {bookingsState.bookings.map((b) => (
               <div key={b.id} className="p-2 rounded-lg bg-booked/10 border border-booked/30 flex items-center justify-between">
                 <div className="text-xs">
-                  <span className="font-medium">{format(parseISO(b.date), "EEE, MMM d")}</span> {b.start_time}–{b.end_time}
+                  <span className="font-medium">{formatDateLabel(b.date)}</span> {b.start_time}–{b.end_time}
                   <div className="text-muted-foreground">{b.participant_names.join(", ")}</div>
                 </div>
                 <div className="flex items-center gap-1">
+                  <AddPeopleDialog booking={b} onUpdate={bookingsState.updateParticipants} />
                   <a
                     href={buildGoogleCalendarUrl(b.date, b.start_time, b.end_time, b.participant_names)}
                     target="_blank"
@@ -274,17 +356,10 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                 onClick={() => handleExpandDate(group.date)}
               >
                 <div className="flex items-center gap-3">
-                  <div className="text-center min-w-[48px]">
-                    <p className="text-xs text-muted-foreground">{format(parseISO(group.date), "EEE")}</p>
-                    <p className="text-lg font-bold">{format(parseISO(group.date), "d")}</p>
-                    <p className="text-xs text-muted-foreground">{format(parseISO(group.date), "MMM")}</p>
-                  </div>
                   <div>
-                    <p className="text-sm font-medium">
-                      {group.slots.length} available slot{group.slots.length > 1 ? "s" : ""}
-                    </p>
+                    <p className="text-sm font-semibold">{formatDateLabel(group.date)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {group.ranges.map((r, i) => (
+                      {group.slots.length} slot{group.slots.length > 1 ? "s" : ""} · {group.ranges.map((r, i) => (
                         <span key={i}>{i > 0 && ", "}{r.start}–{r.end}</span>
                       ))}
                     </p>
@@ -292,7 +367,7 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={group.maxCount === maxMembers ? "default" : "secondary"} className="text-xs">
-                    up to {group.maxCount}/{maxMembers}
+                    {group.maxCount}/{maxMembers}
                   </Badge>
                   {expandedDate === group.date ? <ChevronUp className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </div>
@@ -301,7 +376,6 @@ export function SuggestedMeetings({ bookingsState }: Props) {
               {/* Expanded day drilldown */}
               {expandedDate === group.date && (
                 <div className="p-4 space-y-4 bg-card">
-                  {/* Time slot overview */}
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-2">Available slots</p>
                     <div className="flex flex-wrap gap-1">
@@ -322,7 +396,6 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                     </div>
                   </div>
 
-                  {/* Participant selection */}
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-2">Participants</p>
                     <div className="flex flex-wrap gap-2">
@@ -335,7 +408,6 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                     </div>
                   </div>
 
-                  {/* Time range selection */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Start time</p>
