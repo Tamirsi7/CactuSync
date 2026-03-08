@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 
 // 30-minute slots from 8:00 to 20:00 (compact view)
 const SLOTS: string[] = [];
-for (let h = 8; h <= 19; h++) {
+for (let h = 8; h <= 21; h++) {
   SLOTS.push(`${String(h).padStart(2, "0")}:00`);
   SLOTS.push(`${String(h).padStart(2, "0")}:30`);
 }
-SLOTS.push("20:00");
+SLOTS.push("22:00");
 
 function nextSlot(slot: string): string {
   const h = parseInt(slot.split(":")[0]);
