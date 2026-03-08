@@ -1,0 +1,1 @@
+CREATE POLICY "Team members can update bookings" ON public.bookings FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.team_uuid = bookings.team_uuid AND profiles.user_id = auth.uid()));
