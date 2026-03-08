@@ -128,5 +128,5 @@ export function useBookings() {
     [bookings]
   );
 
-  return { bookings, addBooking, removeBooking, isSlotBooked, getBookingAt };
+  return { bookings, addBooking, removeBooking, updateParticipants, isSlotBooked, getBookingAt };
 }
