@@ -1,11 +1,12 @@
 import { useAuth } from "@/lib/auth-context";
 import { useIsAdmin, useAllProfiles, useAllTeams, useDeleteProfile, useDeleteTeam, useUpdateProfile } from "@/hooks/useAdmin";
 import { useUpdateTeamName } from "@/hooks/useTeams";
+import { useAllJoinRequests, useApproveJoinRequest, useRejectJoinRequest } from "@/hooks/useJoinRequests";
 import { Navigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarClock, ArrowLeft, Trash2, Pencil, Check, X, Users, User } from "lucide-react";
+import { CalendarClock, ArrowLeft, Trash2, Pencil, Check, X, Users, User, Inbox, CheckCircle2, XCircle } from "lucide-react";
 import { useState } from "react";
 
 const Admin = () => {
@@ -17,6 +18,9 @@ const Admin = () => {
   const deleteTeam = useDeleteTeam();
   const updateProfile = useUpdateProfile();
   const updateTeamName = useUpdateTeamName();
+  const { data: joinRequests } = useAllJoinRequests();
+  const approveRequest = useApproveJoinRequest();
+  const rejectRequest = useRejectJoinRequest();
 
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [teamNameInput, setTeamNameInput] = useState("");
@@ -184,6 +188,64 @@ const Admin = () => {
               </tbody>
             </table>
           </div>
+        </section>
+
+        {/* Join Requests Section */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Inbox className="w-5 h-5 text-primary" /> Join Requests ({joinRequests?.length || 0})
+          </h2>
+          {joinRequests && joinRequests.length > 0 ? (
+            <div className="glass-card rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50">
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">User</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Email</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Team</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Requested</th>
+                    <th className="text-right px-4 py-3 text-muted-foreground font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {joinRequests.map((r: any) => (
+                    <tr key={r.id} className="border-b border-border/30 last:border-0">
+                      <td className="px-4 py-3 font-medium">{r.profiles?.full_name || "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{r.profiles?.email || "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.teams?.name || "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        {new Date(r.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                          onClick={() => approveRequest.mutate({ requestId: r.id, userId: r.user_id, teamId: r.team_id })}
+                          disabled={approveRequest.isPending}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          onClick={() => rejectRequest.mutate(r.id)}
+                          disabled={rejectRequest.isPending}
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="glass-card rounded-xl p-8 text-center text-muted-foreground text-sm">
+              No pending join requests.
+            </div>
+          )}
         </section>
       </main>
     </div>
