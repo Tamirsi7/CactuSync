@@ -6,7 +6,7 @@ import { Navigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarClock, ArrowLeft, Trash2, Pencil, Check, X, Users, User } from "lucide-react";
+import { CalendarClock, ArrowLeft, Trash2, Pencil, Check, X, Users, User, Inbox, CheckCircle2, XCircle } from "lucide-react";
 import { useState } from "react";
 
 const Admin = () => {
