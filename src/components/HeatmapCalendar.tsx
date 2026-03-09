@@ -5,7 +5,7 @@ import { useProfile } from "@/hooks/useAvailabilities";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // 30-minute slots from 8:00 to 20:00 (compact view)
@@ -23,6 +23,13 @@ function nextSlot(slot: string): string {
   return `${String(h + 1).padStart(2, "0")}:00`;
 }
 
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0]?.toUpperCase() || "")
+    .join("");
+}
+
 interface SlotInfo {
   count: number;
   names: string[];
@@ -31,6 +38,7 @@ interface SlotInfo {
 interface BookingsState {
   isSlotBooked: (date: string, slot: string) => boolean;
   getBookingAt: (date: string, slot: string) => { names: string[] } | undefined;
+  addBooking: (b: { date: string; startSlot: string; endSlot: string; names: string[] }) => void;
 }
 
 interface Props {
@@ -142,6 +150,20 @@ export function HeatmapCalendar({ bookingsState }: Props) {
     return slotIdx >= minIdx && slotIdx <= maxIdx;
   };
 
+  const handleInstantBook = (dateStr: string, slot: string, names: string[]) => {
+    // Book a 1-hour meeting by default
+    const startH = parseInt(slot.split(":")[0]);
+    const startM = parseInt(slot.split(":")[1]);
+    const endMinutes = (startH * 60 + startM) + 60;
+    const endSlot = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+    bookingsState.addBooking({
+      date: dateStr,
+      startSlot: slot,
+      endSlot,
+      names,
+    });
+  };
+
   const teamName = (profile as any)?.teams?.name || `Team`;
 
   if (isLoading) return <div className="text-muted-foreground text-sm p-8">Loading heatmap...</div>;
@@ -196,24 +218,26 @@ export function HeatmapCalendar({ bookingsState }: Props) {
                     const inDrag = isInDragRange(dateStr, slotIdx);
                     const booked = bookingsState.isSlotBooked(dateStr, slot);
                     const booking = bookingsState.getBookingAt(dateStr, slot);
+                    const initialsText = info.names.map(getInitials).join(" ");
+                    const canInstantBook = info.count >= 2 && !booked;
 
                     return (
                       <Popover key={key}>
                         <PopoverTrigger asChild>
                           <button
                             className={cn(
-                              "h-5 w-full transition-colors duration-100 text-[10px] font-medium hover:ring-1 hover:ring-primary/30 focus:outline-none",
+                              "h-5 w-full transition-colors duration-100 text-[9px] font-medium hover:ring-1 hover:ring-primary/30 focus:outline-none leading-tight",
                               inDrag ? "bg-primary/30 ring-1 ring-primary/50" : getHeatColor(info.count, dateStr, slot),
                               !isHour && "border-t border-border/20"
                             )}
                             onMouseDown={(e) => { e.preventDefault(); handleMouseDown(dateStr, slotIdx); }}
                             onMouseEnter={() => handleMouseEnter(dateStr, slotIdx)}
                           >
-                            {booked ? "●" : info.count > 0 ? info.count : ""}
+                            {booked ? "●" : info.count > 0 ? initialsText : ""}
                           </button>
                         </PopoverTrigger>
                         {(info.count > 0 || booked) && (
-                          <PopoverContent className="w-48 p-3" align="center">
+                          <PopoverContent className="w-52 p-3" align="center">
                             <div className="space-y-1.5">
                               <p className="text-xs font-medium text-muted-foreground">
                                 {format(d, "MMM d")} at {slot}
@@ -232,6 +256,19 @@ export function HeatmapCalendar({ bookingsState }: Props) {
                                     </div>
                                   ))}
                                 </div>
+                              )}
+                              {canInstantBook && (
+                                <Button
+                                  size="sm"
+                                  className="w-full mt-2 text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleInstantBook(dateStr, slot, info.names);
+                                  }}
+                                >
+                                  <CalendarPlus className="w-3 h-3 mr-1" />
+                                  Book 1h meeting
+                                </Button>
                               )}
                             </div>
                           </PopoverContent>

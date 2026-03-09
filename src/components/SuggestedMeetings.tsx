@@ -253,9 +253,19 @@ export function SuggestedMeetings({ bookingsState }: Props) {
     if (group && group.slots.length > 0) {
       const allNames = new Set(group.slots.flatMap((s) => s.names));
       setSelectedNames([...allNames]);
-      setSelectedStartSlot(group.slots[0].slot);
-      const firstRange = group.ranges[0];
-      setSelectedEndSlot(firstRange ? firstRange.end : nextSlot(group.slots[0].slot));
+      const startSlot = group.slots[0].slot;
+      setSelectedStartSlot(startSlot);
+      // Default to 1-hour meeting
+      const startH = parseInt(startSlot.split(":")[0]);
+      const startM = parseInt(startSlot.split(":")[1]);
+      const endMinutes = (startH * 60 + startM) + 60;
+      const defaultEnd = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+      const endOptions = getEndOptionsForGroup(group, startSlot, [...allNames]);
+      if (endOptions.includes(defaultEnd)) {
+        setSelectedEndSlot(defaultEnd);
+      } else {
+        setSelectedEndSlot(endOptions[endOptions.length - 1] || nextSlot(startSlot));
+      }
     }
   };
 
@@ -280,17 +290,21 @@ export function SuggestedMeetings({ bookingsState }: Props) {
       .map((s) => s.slot);
   };
 
-  const getEndOptions = (group: DayGroup) => {
-    const startIdx = group.slots.findIndex((s) => s.slot === selectedStartSlot);
+  const getEndOptionsForGroup = (group: DayGroup, startSlot: string, names: string[]) => {
+    const startIdx = group.slots.findIndex((s) => s.slot === startSlot);
     if (startIdx < 0) return [nextSlot(group.slots[0].slot)];
     const options: string[] = [];
     for (let i = startIdx; i < group.slots.length; i++) {
       const s = group.slots[i];
-      if (selectedNames.length > 0 && !selectedNames.some((n) => s.names.includes(n))) break;
+      if (names.length > 0 && !names.some((n) => s.names.includes(n))) break;
       if (i > startIdx && nextSlot(group.slots[i - 1].slot) !== s.slot) break;
       options.push(nextSlot(s.slot));
     }
     return options.length > 0 ? options : [nextSlot(group.slots[startIdx].slot)];
+  };
+
+  const getEndOptions = (group: DayGroup) => {
+    return getEndOptionsForGroup(group, selectedStartSlot, selectedNames);
   };
 
   const getDayNames = (group: DayGroup) => {
@@ -411,7 +425,19 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Start time</p>
-                      <Select value={selectedStartSlot} onValueChange={(v) => { setSelectedStartSlot(v); setSelectedEndSlot(nextSlot(v)); }}>
+                      <Select value={selectedStartSlot} onValueChange={(v) => {
+                        setSelectedStartSlot(v);
+                        const startH = parseInt(v.split(":")[0]);
+                        const startM = parseInt(v.split(":")[1]);
+                        const endMinutes = (startH * 60 + startM) + 60;
+                        const defaultEnd = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+                        const opts = getEndOptionsForGroup(group, v, selectedNames);
+                        if (opts.includes(defaultEnd)) {
+                          setSelectedEndSlot(defaultEnd);
+                        } else {
+                          setSelectedEndSlot(opts[opts.length - 1] || nextSlot(v));
+                        }
+                      }}>
                         <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {getStartOptions(group).map((opt) => (
@@ -433,7 +459,7 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                     </div>
                   </div>
 
-                  <Button className="w-full" disabled={selectedNames.length === 0} onClick={() => handleBook(group.date)}>
+                  <Button className="w-full" disabled={selectedNames.length < 2} onClick={() => handleBook(group.date)}>
                     <Check className="w-4 h-4 mr-1.5" /> Book {selectedStartSlot}–{selectedEndSlot}
                   </Button>
                 </div>
