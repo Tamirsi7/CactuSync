@@ -253,9 +253,19 @@ export function SuggestedMeetings({ bookingsState }: Props) {
     if (group && group.slots.length > 0) {
       const allNames = new Set(group.slots.flatMap((s) => s.names));
       setSelectedNames([...allNames]);
-      setSelectedStartSlot(group.slots[0].slot);
-      const firstRange = group.ranges[0];
-      setSelectedEndSlot(firstRange ? firstRange.end : nextSlot(group.slots[0].slot));
+      const startSlot = group.slots[0].slot;
+      setSelectedStartSlot(startSlot);
+      // Default to 1-hour meeting
+      const startH = parseInt(startSlot.split(":")[0]);
+      const startM = parseInt(startSlot.split(":")[1]);
+      const endMinutes = (startH * 60 + startM) + 60;
+      const defaultEnd = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+      const endOptions = getEndOptionsForGroup(group, startSlot, [...allNames]);
+      if (endOptions.includes(defaultEnd)) {
+        setSelectedEndSlot(defaultEnd);
+      } else {
+        setSelectedEndSlot(endOptions[endOptions.length - 1] || nextSlot(startSlot));
+      }
     }
   };
 
