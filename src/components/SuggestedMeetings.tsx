@@ -433,7 +433,7 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                     </div>
                   </div>
 
-                  <Button className="w-full" disabled={selectedNames.length === 0} onClick={() => handleBook(group.date)}>
+                  <Button className="w-full" disabled={selectedNames.length < 2} onClick={() => handleBook(group.date)}>
                     <Check className="w-4 h-4 mr-1.5" /> Book {selectedStartSlot}–{selectedEndSlot}
                   </Button>
                 </div>
