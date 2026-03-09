@@ -425,7 +425,19 @@ export function SuggestedMeetings({ bookingsState }: Props) {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Start time</p>
-                      <Select value={selectedStartSlot} onValueChange={(v) => { setSelectedStartSlot(v); setSelectedEndSlot(nextSlot(v)); }}>
+                      <Select value={selectedStartSlot} onValueChange={(v) => {
+                        setSelectedStartSlot(v);
+                        const startH = parseInt(v.split(":")[0]);
+                        const startM = parseInt(v.split(":")[1]);
+                        const endMinutes = (startH * 60 + startM) + 60;
+                        const defaultEnd = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+                        const opts = getEndOptionsForGroup(group, v, selectedNames);
+                        if (opts.includes(defaultEnd)) {
+                          setSelectedEndSlot(defaultEnd);
+                        } else {
+                          setSelectedEndSlot(opts[opts.length - 1] || nextSlot(v));
+                        }
+                      }}>
                         <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {getStartOptions(group).map((opt) => (
