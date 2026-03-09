@@ -290,17 +290,21 @@ export function SuggestedMeetings({ bookingsState }: Props) {
       .map((s) => s.slot);
   };
 
-  const getEndOptions = (group: DayGroup) => {
-    const startIdx = group.slots.findIndex((s) => s.slot === selectedStartSlot);
+  const getEndOptionsForGroup = (group: DayGroup, startSlot: string, names: string[]) => {
+    const startIdx = group.slots.findIndex((s) => s.slot === startSlot);
     if (startIdx < 0) return [nextSlot(group.slots[0].slot)];
     const options: string[] = [];
     for (let i = startIdx; i < group.slots.length; i++) {
       const s = group.slots[i];
-      if (selectedNames.length > 0 && !selectedNames.some((n) => s.names.includes(n))) break;
+      if (names.length > 0 && !names.some((n) => s.names.includes(n))) break;
       if (i > startIdx && nextSlot(group.slots[i - 1].slot) !== s.slot) break;
       options.push(nextSlot(s.slot));
     }
     return options.length > 0 ? options : [nextSlot(group.slots[startIdx].slot)];
+  };
+
+  const getEndOptions = (group: DayGroup) => {
+    return getEndOptionsForGroup(group, selectedStartSlot, selectedNames);
   };
 
   const getDayNames = (group: DayGroup) => {
