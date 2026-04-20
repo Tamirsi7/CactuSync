@@ -136,6 +136,6 @@ Nobody files a bug report that "WhatsApp polls are bad for scheduling." They jus
 
 **Tamir** - Product Management candidate with experience as a VC analyst at Cactus Capital. I build things to understand them, and I use AI tools to ship faster than the traditional PM-to-engineering handoff allows.
 
-[GitHub](https://github.com/Tamirsi7) , [Linkedin](https://linkedin.com/in/tamir-siman-tov/)) · Built with [Lovable](https://lovable.dev)
+[GitHub](https://github.com/Tamirsi7) , [Linkedin](https://linkedin.com/in/tamir-siman-tov/) · Built with [Lovable](https://lovable.dev)
 
 ---
