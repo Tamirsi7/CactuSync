@@ -10,7 +10,7 @@
 
 ## The Problem I Was Living
 
-Scheduling a group meeting sounds trivial. It isn't.
+Scheduling a group meeting sounds trivial right? It isn't.
 
 I was coordinating a psychology assignment with a 5-person group. What should have taken 2 minutes consumed 20+ messages across three days. We tried WhatsApp polls — they're rigid and only capture a single option. We tried "just check your Google Calendar" — but realistically, most students don't log every class, personal commitment, or casual block. Calendar-based solutions assume a level of discipline that doesn't exist in the real world.
 
@@ -139,5 +139,3 @@ Nobody files a bug report that "WhatsApp polls are bad for scheduling." They jus
 [GitHub](https://github.com/Tamirsi7) · Built with [Lovable](https://lovable.dev)
 
 ---
-
-*Built in April 2026 as a portfolio project demonstrating AI-accelerated product development.*
